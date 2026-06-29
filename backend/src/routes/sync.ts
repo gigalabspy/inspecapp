@@ -24,8 +24,18 @@ syncRouter.get('/pull', async (req, res) => {
 
 syncRouter.post('/push', async (req, res) => {
   const incoming = (req.body?.inspections || []) as InspectionState[];
-  const accepted = [];
-  const conflicts = [];
+ const conflicts: Array<{
+  id: string;
+  reason: string;
+  serverInspection: InspectionState;
+  serverUpdatedAt: string;
+}> = [];
+
+const accepted: Array<{
+  id: string;
+  serverUpdatedAt: string;
+  inspection: InspectionState;
+}> = [];
 
   for (const inspection of incoming) {
     if (!inspection?.meta?.id) continue;
