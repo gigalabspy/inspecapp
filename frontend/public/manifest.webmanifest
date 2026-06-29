@@ -1,0 +1,16 @@
+{
+  "name": "InspecAPP Fase 6 Android",
+  "short_name": "InspecAPP",
+  "description": "PWA y app Android para inspección eléctrica en baja tensión con checklist DSE-GUI-001, evidencias, sincronización, reportes PDF, firmas y cierre formal.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#111827",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}

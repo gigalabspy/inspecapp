@@ -1,0 +1,16 @@
+{
+  "name": "inspecapp-fase6-android-capacitor",
+  "version": "6.0.0",
+  "private": true,
+  "scripts": {
+    "dev:frontend": "cd frontend && npm install && npm run dev",
+    "dev:backend": "cd backend && npm install && npm run dev",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "build:backend": "cd backend && npm install && npm run build",
+    "mobile:install": "cd frontend && npm install",
+    "mobile:build": "cd frontend && npm run build && npx cap sync android",
+    "mobile:add:android": "cd frontend && npx cap add android",
+    "mobile:open": "cd frontend && npx cap open android",
+    "mobile:run": "cd frontend && npm run build && npx cap run android"
+  }
+}
