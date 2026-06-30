@@ -6,6 +6,8 @@ import { EvidenceUploader } from './components/EvidenceUploader';
 import { InspectionManager } from './components/InspectionManager';
 import { MeasurementsEditor } from './components/MeasurementsEditor';
 import { SyncPanel } from './components/SyncPanel';
+import { AuthProvider } from "./auth/AuthContext";
+import { LoginGate } from "./auth/LoginGate";
 import { FormalReportPanel } from './components/FormalReportPanel';
 import { ClosurePanel } from './components/ClosurePanel';
 import { MobileStatusPanel } from './components/MobileStatusPanel';
@@ -82,8 +84,7 @@ async function readJsonFile(file: File): Promise<unknown> {
   const text = await file.text();
   return JSON.parse(text);
 }
-
-export default function App() {
+function AppContent() {
   const [state, setState] = useState<InspectionState | null>(null);
   const [summaries, setSummaries] = useState<InspectionSummary[]>([]);
   const [storageUsage, setStorageUsage] = useState<StorageUsageInfo>({});
@@ -362,5 +363,14 @@ export default function App() {
         />
       )}
     </main>
+  );
+}
+export default function App() {
+  return (
+    <AuthProvider>
+      <LoginGate>
+        <AppContent />
+      </LoginGate>
+    </AuthProvider>
   );
 }
