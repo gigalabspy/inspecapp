@@ -6,8 +6,8 @@ import { EvidenceUploader } from './components/EvidenceUploader';
 import { InspectionManager } from './components/InspectionManager';
 import { MeasurementsEditor } from './components/MeasurementsEditor';
 import { SyncPanel } from './components/SyncPanel';
-import { AuthProvider } from "./auth/AuthContext";
-import { LoginGate } from "./auth/LoginGate";
+import { AuthProvider, useAuth, type UserRole } from './auth/AuthContext';
+import { LoginGate } from './auth/LoginGate';
 import { FormalReportPanel } from './components/FormalReportPanel';
 import { ClosurePanel } from './components/ClosurePanel';
 import { MobileStatusPanel } from './components/MobileStatusPanel';
@@ -29,6 +29,43 @@ import {
 import { DEFAULT_API_URL, SESSION_KEY } from './services/api';
 
 const today = new Date().toISOString().slice(0, 10);
+
+type TabKey =
+  | 'datos'
+  | 'circuitos'
+  | 'checklist'
+  | 'evidencias'
+  | 'sync'
+  | 'reporte'
+  | 'cierre'
+  | 'movil';
+
+type AppTab = {
+  key: TabKey;
+  label: string;
+  roles: UserRole[];
+};
+
+const appTabs: AppTab[] = [
+  { key: 'datos', label: '1. Datos', roles: ['INSPECTOR', 'ADMIN'] },
+  { key: 'circuitos', label: '2. Circuitos', roles: ['INSPECTOR', 'ADMIN'] },
+  { key: 'checklist', label: '3. Checklist', roles: ['INSPECTOR', 'ADMIN'] },
+  { key: 'evidencias', label: '4. Evidencias', roles: ['INSPECTOR', 'ADMIN'] },
+  { key: 'sync', label: '5. Sync', roles: ['ADMIN'] },
+  { key: 'reporte', label: '6. Reporte', roles: ['INSPECTOR', 'SUPERVISOR', 'ADMIN'] },
+  { key: 'cierre', label: '7. Cierre', roles: ['SUPERVISOR', 'ADMIN'] },
+  { key: 'movil', label: '8. Móvil', roles: ['ADMIN'] }
+];
+
+function canUseTab(role: UserRole | undefined, tab: TabKey): boolean {
+  if (!role) return false;
+  return appTabs.find((item) => item.key === tab)?.roles.includes(role) ?? false;
+}
+
+function firstTabForRole(role: UserRole | undefined): TabKey {
+  return appTabs.find((item) => role && item.roles.includes(role))?.key ?? 'datos';
+}
+
 
 const initialState = (): InspectionState => {
   const now = new Date().toISOString();
@@ -85,10 +122,14 @@ async function readJsonFile(file: File): Promise<unknown> {
   return JSON.parse(text);
 }
 function AppContent() {
+  const { user } = useAuth();
+  const userRole = user?.role;
+  const isAdmin = userRole === 'ADMIN';
+
   const [state, setState] = useState<InspectionState | null>(null);
   const [summaries, setSummaries] = useState<InspectionSummary[]>([]);
   const [storageUsage, setStorageUsage] = useState<StorageUsageInfo>({});
-  const [tab, setTab] = useState<'datos' | 'circuitos' | 'checklist' | 'evidencias' | 'sync' | 'reporte' | 'cierre' | 'movil'>('datos');
+  const [tab, setTab] = useState<TabKey>('datos');
   const [query, setQuery] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
@@ -111,6 +152,19 @@ function AppContent() {
       navigator.serviceWorker.register('/sw.js').catch(() => undefined);
     }
   }, []);
+
+  const visibleTabs = useMemo(() => {
+    if (!userRole) return [];
+    return appTabs.filter((item) => item.roles.includes(userRole));
+  }, [userRole]);
+
+  useEffect(() => {
+    if (!userRole) return;
+    if (!canUseTab(userRole, tab)) {
+      setTab(firstTabForRole(userRole));
+    }
+  }, [tab, userRole]);
+
 
   useEffect(() => {
     if (!state) return;
@@ -172,6 +226,11 @@ function AppContent() {
           }
         }}
         onImport={async (file) => {
+          if (!isAdmin) {
+            alert('Solo el Administrador puede importar archivos JSON.');
+            return;
+          }
+
           try {
             const json = await readJsonFile(file);
             if (Array.isArray(json)) {
@@ -188,10 +247,15 @@ function AppContent() {
           }
         }}
         onExportAll={async () => {
+          if (!isAdmin) {
+            alert('Solo el Administrador puede exportar todo el respaldo.');
+            return;
+          }
+
           const inspections = await getAllInspectionsOffline();
           downloadBlob(JSON.stringify({ exportedAt: new Date().toISOString(), inspections }, null, 2), 'inspecapp-respaldo-offline.json');
         }}
-        syncPanel={<SyncPanel onRefresh={refreshDashboard} />}
+        syncPanel={isAdmin ? <SyncPanel onRefresh={refreshDashboard} /> : <></>}
       />
     );
   }
@@ -249,18 +313,19 @@ function AppContent() {
         <span>Última edición: {state.meta.updatedAt ? new Date(state.meta.updatedAt).toLocaleString() : 's/d'}</span>
       </section>
 
-      <nav className="tabs">
-        <button className={tab === 'datos' ? 'active' : ''} onClick={() => setTab('datos')}>1. Datos</button>
-        <button className={tab === 'circuitos' ? 'active' : ''} onClick={() => setTab('circuitos')}>2. Circuitos</button>
-        <button className={tab === 'checklist' ? 'active' : ''} onClick={() => setTab('checklist')}>3. Checklist</button>
-        <button className={tab === 'evidencias' ? 'active' : ''} onClick={() => setTab('evidencias')}>4. Evidencias</button>
-        <button className={tab === 'sync' ? 'active' : ''} onClick={() => setTab('sync')}>5. Sync</button>
-        <button className={tab === 'reporte' ? 'active' : ''} onClick={() => setTab('reporte')}>6. Reporte</button>
-        <button className={tab === 'cierre' ? 'active' : ''} onClick={() => setTab('cierre')}>7. Cierre</button>
-        <button className={tab === 'movil' ? 'active' : ''} onClick={() => setTab('movil')}>8. Móvil</button>
+<nav className="tabs">
+        {visibleTabs.map((item) => (
+          <button
+            key={item.key}
+            className={tab === item.key ? 'active' : ''}
+            onClick={() => setTab(item.key)}
+          >
+            {item.label}
+          </button>
+        ))}
       </nav>
 
-      {tab === 'datos' && (
+      {tab === 'datos' && canUseTab(userRole, 'datos') && (
         <section className="panel">
           <div className="section-title">
             <h2>Datos de inspección</h2>
@@ -310,9 +375,9 @@ function AppContent() {
         </section>
       )}
 
-      {tab === 'circuitos' && <CircuitsEditor circuits={state.circuits} onChange={(circuits) => setState({ ...state, circuits, meta: { ...state.meta, syncStatus: 'PENDIENTE_SYNC' } })} />}
+      {tab === 'circuitos' && canUseTab(userRole, 'circuitos') && <CircuitsEditor circuits={state.circuits} onChange={(circuits) => setState({ ...state, circuits, meta: { ...state.meta, syncStatus: 'PENDIENTE_SYNC' } })} />}
 
-      {tab === 'checklist' && (
+      {tab === 'checklist' && canUseTab(userRole, 'checklist') && (
         <>
           <section className="panel slim">
             <label>Buscar en checklist<input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Ej.: DR, conductor neutro, RPAT, electroductos..." /></label>
@@ -327,11 +392,11 @@ function AppContent() {
         </>
       )}
 
-      {tab === 'evidencias' && <EvidenceUploader items={applicableItems} evidences={state.evidences} onChange={(evidences) => setState({ ...state, evidences, meta: { ...state.meta, syncStatus: 'PENDIENTE_SYNC' } })} />}
+      {tab === 'evidencias' && canUseTab(userRole, 'evidencias') && <EvidenceUploader items={applicableItems} evidences={state.evidences} onChange={(evidences) => setState({ ...state, evidences, meta: { ...state.meta, syncStatus: 'PENDIENTE_SYNC' } })} />}
 
-      {tab === 'sync' && <SyncPanel currentInspection={state} onCurrentInspectionChange={setState} onRefresh={refreshDashboard} />}
+      {tab === 'sync' && canUseTab(userRole, 'sync') && <SyncPanel currentInspection={state} onCurrentInspectionChange={setState} onRefresh={refreshDashboard} />}
 
-      {tab === 'reporte' && (
+      {tab === 'reporte' && canUseTab(userRole, 'reporte') && (
         <FormalReportPanel
           state={state}
           applicableItems={applicableItems}
@@ -341,7 +406,7 @@ function AppContent() {
         />
       )}
 
-      {tab === 'cierre' && (
+      {tab === 'cierre' && canUseTab(userRole, 'cierre') && (
         <ClosurePanel
           state={state}
           onInspectionChange={setState}
@@ -349,7 +414,7 @@ function AppContent() {
         />
       )}
 
-      {tab === 'movil' && (
+      {tab === 'movil' && canUseTab(userRole, 'movil') && (
         <MobileStatusPanel
           storageUsage={storageUsage}
           apiUrl={(() => {
