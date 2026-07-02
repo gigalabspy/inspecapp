@@ -1,4 +1,5 @@
 import type { ChecklistItem, InspectionState } from '../types/inspection.js';
+import type { FindingCode } from './findingClassifications.js';
 import { checklistDSE001 } from './checklistDSE001.js';
 
 export type ReportStatusCounts = Record<'CUMPLE' | 'NO_CUMPLE' | 'NO_APLICA' | 'PENDIENTE' | 'SIN_RESPONDER', number>;
@@ -13,6 +14,7 @@ export interface ReportSummary {
   resEvaluados: number;
   noConformidades: number;
   noConformidadesCriticas: number;
+  hallazgosPorCodigo: Record<Exclude<FindingCode, ''>, number>;
   evidencias: number;
   circuitos: number;
   mediciones: number;
@@ -51,8 +53,14 @@ export function buildReportSummary(inspection: InspectionState): ReportSummary {
 
   const noConformidadesCriticas = items.filter((item) => {
     const answer = inspection.answers?.[item.id];
-    return answer?.resultado === 'NO_CUMPLE' && (answer.criticidad === 'CRITICA' || item.esRES);
+    return answer?.resultado === 'NO_CUMPLE' && (answer.criticidad === 'CRITICA' || answer.hallazgoCodigo === 'P1' || item.esRES);
   }).length;
+
+  const hallazgosPorCodigo = items.reduce<Record<Exclude<FindingCode, ''>, number>>((acc, item) => {
+    const code = inspection.answers?.[item.id]?.hallazgoCodigo;
+    if (code) acc[code] += 1;
+    return acc;
+  }, { P1: 0, P2: 0, P3: 0, MI: 0 });
 
   const resultadoPreliminar = counts.NO_CUMPLE > 0
     ? 'OBSERVADO'
@@ -70,6 +78,7 @@ export function buildReportSummary(inspection: InspectionState): ReportSummary {
     resEvaluados: items.filter((item) => item.esRES).length,
     noConformidades: counts.NO_CUMPLE,
     noConformidadesCriticas,
+    hallazgosPorCodigo,
     evidencias: inspection.evidences?.length || 0,
     circuitos: inspection.circuits?.length || 0,
     mediciones: inspection.measurements?.length || 0,

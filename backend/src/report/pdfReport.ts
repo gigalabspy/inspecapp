@@ -1,6 +1,7 @@
 import PDFDocument from 'pdfkit';
 import type { ChecklistItem, Evidence, InspectionState } from '../types/inspection.js';
 import { buildReportSummary, getApplicableItems, itemById } from './reportData.js';
+import { findingCodeLabel } from './findingClassifications.js';
 
 function text(value: unknown): string {
   return String(value ?? '').trim() || 's/d';
@@ -178,9 +179,13 @@ export async function buildFormalReportPdf(inspection: InspectionState): Promise
     tableHeader(doc, ['Requisitos', 'Cumplen', 'No conformidades', 'Evidencias'], summaryWidths);
     tableRow(doc, [String(summary.totalRequisitos), String(summary.counts.CUMPLE), String(summary.noConformidades), String(summary.evidencias)], summaryWidths, 22);
     keyValue(doc, 'Resultado preliminar', summary.resultadoPreliminar);
-    keyValue(doc, 'No conformidades críticas o RES', summary.noConformidadesCriticas);
+    keyValue(doc, 'No conformidades críticas, P1 o RES', summary.noConformidadesCriticas);
 
-    sectionTitle(doc, '3. Circuitos definidos');
+    sectionTitle(doc, '3. Clasificación de hallazgos');
+    tableHeader(doc, ['P1 peligro presente', 'P2 potencialmente peligroso', 'P3 mejora recomendada', 'MI investigación adicional'], summaryWidths);
+    tableRow(doc, [String(summary.hallazgosPorCodigo.P1), String(summary.hallazgosPorCodigo.P2), String(summary.hallazgosPorCodigo.P3), String(summary.hallazgosPorCodigo.MI)], summaryWidths, 22);
+
+    sectionTitle(doc, '4. Circuitos definidos');
     tableHeader(doc, ['#', 'Tablero', 'Circuito', 'Uso', 'Tensión', 'Protección', 'DR'], [22, 70, 78, 96, 50, 76, 56]);
     if (inspection.circuits.length) {
       inspection.circuits.forEach((circuit, index) => tableRow(doc, [String(index + 1), text(circuit.tablero), text(circuit.nombre), text(circuit.uso), text(circuit.tension), text(circuit.proteccion), text(circuit.dr)], [22, 70, 78, 96, 50, 76, 56]));
@@ -188,7 +193,7 @@ export async function buildFormalReportPdf(inspection: InspectionState): Promise
       tableRow(doc, ['-', 'Sin circuitos cargados', '', '', '', '', ''], [22, 70, 78, 96, 50, 76, 56], 22);
     }
 
-    sectionTitle(doc, '4. Ensayos y mediciones registradas');
+    sectionTitle(doc, '5. Ensayos y mediciones registradas');
     tableHeader(doc, ['#', 'Tipo', 'Valor', 'Unidad', 'Instrumento', 'Observación'], [22, 110, 54, 42, 92, 128]);
     if (inspection.measurements.length) {
       inspection.measurements.forEach((m, index) => tableRow(doc, [String(index + 1), text(m.tipo), text(m.valor), text(m.unidad), text(m.instrumento), text(m.observacion)], [22, 110, 54, 42, 92, 128]));
@@ -196,36 +201,50 @@ export async function buildFormalReportPdf(inspection: InspectionState): Promise
       tableRow(doc, ['-', 'Sin mediciones cargadas', '', '', '', ''], [22, 110, 54, 42, 92, 128], 22);
     }
 
-    sectionTitle(doc, '5. No conformidades detectadas');
-    tableHeader(doc, ['Código', 'RES', 'Criticidad', 'Requisito', 'Observación'], [50, 28, 58, 170, 142]);
+    sectionTitle(doc, '6. No conformidades detectadas');
+    const nonConformityWidths = [46, 24, 72, 126, 96, 84];
+    tableHeader(doc, ['Código', 'RES', 'Clasificación', 'Requisito', 'Acción / plazo', 'Observación'], nonConformityWidths);
     const nonConformities = items.filter((item) => inspection.answers?.[item.id]?.resultado === 'NO_CUMPLE');
     if (nonConformities.length) {
       nonConformities.forEach((item) => {
         const answer = inspection.answers[item.id]!;
-        tableRow(doc, [item.codigo, item.esRES ? 'Sí' : 'No', text(answer.criticidad || (item.esRES ? 'CRITICA' : 'MEDIA')), item.requisito, text(answer.observacion)], [50, 28, 58, 170, 142], 36);
+        tableRow(
+          doc,
+          [
+            item.codigo,
+            item.esRES ? 'Sí' : 'No',
+            text(findingCodeLabel(answer.hallazgoCodigo)),
+            item.requisito,
+            `${text(answer.accionCorrectiva)} / ${text(answer.plazoCorreccion)}`,
+            text(answer.observacion)
+          ],
+          nonConformityWidths,
+          46
+        );
       });
     } else {
-      tableRow(doc, ['-', '-', '-', 'No se registraron no conformidades', ''], [50, 28, 58, 170, 142], 24);
+      tableRow(doc, ['-', '-', '-', 'No se registraron no conformidades', '', ''], nonConformityWidths, 24);
     }
 
     doc.addPage();
-    sectionTitle(doc, '6. Lista de verificación completa');
-    tableHeader(doc, ['Código', 'RES', 'Grupo', 'Requisito', 'Resultado', 'Observación'], [48, 24, 86, 154, 62, 74]);
+    sectionTitle(doc, '7. Lista de verificación completa');
+    const checklistWidths = [44, 22, 78, 135, 56, 55, 58];
+    tableHeader(doc, ['Código', 'RES', 'Grupo', 'Requisito', 'Resultado', 'Hallazgo', 'Observación'], checklistWidths);
     items.forEach((item) => {
       const answer = inspection.answers?.[item.id];
-      tableRow(doc, [item.codigo, item.esRES ? 'Sí' : 'No', item.grupo, item.requisito, statusLabel(answer?.resultado || 'SIN_RESPONDER'), text(answer?.observacion || '')], [48, 24, 86, 154, 62, 74], 34);
+      tableRow(doc, [item.codigo, item.esRES ? 'Sí' : 'No', item.grupo, item.requisito, statusLabel(answer?.resultado || 'SIN_RESPONDER'), findingCodeLabel(answer?.hallazgoCodigo), text(answer?.observacion || '')], checklistWidths, 34);
     });
 
     if (inspection.evidences.length) {
       doc.addPage();
-      sectionTitle(doc, '7. Evidencias fotográficas');
+      sectionTitle(doc, '8. Evidencias fotográficas');
       inspection.evidences.forEach((evidence) => renderEvidence(doc, evidence, items));
     }
 
-    sectionTitle(doc, '8. Observación general');
+    sectionTitle(doc, '9. Observación general');
     doc.fontSize(9).fillColor('#111827').font('Helvetica').text(text(inspection.meta.observacionGeneral), { width: 500 });
 
-    sectionTitle(doc, '9. Firmas y cierre documental');
+    sectionTitle(doc, '10. Firmas y cierre documental');
     keyValue(doc, 'Decisión final', inspection.closure?.finalDecision || 'Pendiente');
     keyValue(doc, 'Fecha de cierre', formatDate(inspection.closure?.closedAt));
     keyValue(doc, 'Cerrado por', inspection.closure?.closedByUserName || 's/d');
@@ -252,7 +271,7 @@ export async function buildFormalReportPdf(inspection: InspectionState): Promise
     doc.y = signatureY + 134;
 
     if ((inspection.auditTrail || []).length) {
-      sectionTitle(doc, '10. Trazabilidad resumida');
+      sectionTitle(doc, '11. Trazabilidad resumida');
       tableHeader(doc, ['Fecha', 'Acción', 'Usuario', 'Detalle'], [80, 98, 110, 160]);
       (inspection.auditTrail || []).slice(-12).forEach((entry) => {
         tableRow(doc, [formatDate(entry.createdAt), entry.action, `${entry.actorName} (${entry.actorRole})`, entry.detail], [80, 98, 110, 160], 28);

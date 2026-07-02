@@ -1,6 +1,7 @@
 export type InspectionType = 'INICIAL' | 'INTERMEDIA' | 'FINAL' | 'EXISTENTE';
 export type ChecklistStage = 'INICIAL' | 'INTERMEDIA' | 'FINAL_VISUAL' | 'FINAL_ENSAYOS';
 export type AnswerStatus = '' | 'CUMPLE' | 'NO_CUMPLE' | 'NO_APLICA' | 'PENDIENTE';
+export type FindingCode = '' | 'P1' | 'P2' | 'P3' | 'MI';
 export type SyncStatus = 'LOCAL' | 'PENDIENTE_SYNC' | 'SINCRONIZADA' | 'ERROR_SYNC';
 export type UserRole = 'ADMIN' | 'INSPECTOR' | 'SUPERVISOR';
 export type SignatureKind = 'PROPIETARIO' | 'INSPECTOR' | 'SUPERVISOR';
@@ -113,6 +114,10 @@ export interface ChecklistAnswer {
   resultado: AnswerStatus;
   observacion: string;
   criticidad: 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA' | '';
+  hallazgoCodigo?: FindingCode;
+  accionCorrectiva?: string;
+  plazoCorreccion?: string;
+  responsableCorreccion?: string;
 }
 
 export interface Evidence {
