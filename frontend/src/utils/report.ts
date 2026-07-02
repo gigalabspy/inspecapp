@@ -1,4 +1,5 @@
 import type { ChecklistItem, InspectionState } from '../types';
+import { findingCodeLabel } from '../data/findingClassifications';
 
 function escapeHtml(value: string): string {
   return value
@@ -7,6 +8,10 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function escapeValue(value: unknown): string {
+  return escapeHtml(String(value ?? ''));
 }
 
 export function buildPreliminaryReportHtml(state: InspectionState, items: ChecklistItem[]): string {
@@ -22,14 +27,32 @@ export function buildPreliminaryReportHtml(state: InspectionState, items: Checkl
         <td>${escapeHtml(item.requisito)}</td>
         <td>${escapeHtml(item.referencia)}</td>
         <td>${escapeHtml(status)}</td>
+        <td>${escapeValue(findingCodeLabel(answer?.hallazgoCodigo))}</td>
+        <td>${escapeValue(answer?.accionCorrectiva)}</td>
+        <td>${escapeValue(answer?.plazoCorreccion)}</td>
         <td>${escapeHtml(obs)}</td>
       </tr>`;
   }).join('');
 
   const nonConformities = items
     .filter((item) => state.answers[item.id]?.resultado === 'NO_CUMPLE')
-    .map((item) => `<li><strong>${escapeHtml(item.codigo)}</strong> ${escapeHtml(item.requisito)} — ${escapeHtml(state.answers[item.id]?.observacion || '')}</li>`)
+    .map((item) => {
+      const answer = state.answers[item.id];
+      return `<li>
+        <strong>${escapeHtml(item.codigo)}</strong> ${escapeHtml(item.requisito)}<br />
+        <strong>Clasificación:</strong> ${escapeValue(findingCodeLabel(answer?.hallazgoCodigo))}<br />
+        <strong>Observación:</strong> ${escapeValue(answer?.observacion || 'Sin observación.')}<br />
+        <strong>Acción:</strong> ${escapeValue(answer?.accionCorrectiva || 'Sin acción definida.')}<br />
+        <strong>Plazo:</strong> ${escapeValue(answer?.plazoCorreccion || 'Sin plazo definido.')}
+      </li>`;
+    })
     .join('');
+
+  const findingCounts = items.reduce<Record<'P1' | 'P2' | 'P3' | 'MI', number>>((acc, item) => {
+    const code = state.answers[item.id]?.hallazgoCodigo;
+    if (code) acc[code] += 1;
+    return acc;
+  }, { P1: 0, P2: 0, P3: 0, MI: 0 });
 
   const circuits = state.circuits.map((circuit) => `
     <tr>
@@ -61,9 +84,13 @@ export function buildPreliminaryReportHtml(state: InspectionState, items: Checkl
     h1, h2 { margin-bottom: 6px; }
     .muted { color: #64748b; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin: 16px 0; }
+    .finding-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0 24px; }
+    .finding-summary div { border: 1px solid #cbd5e1; padding: 10px; border-radius: 8px; background: #f8fafc; }
+    .finding-summary strong { display: block; font-size: 20px; }
     table { width: 100%; border-collapse: collapse; margin: 12px 0 24px; font-size: 12px; }
     th, td { border: 1px solid #cbd5e1; padding: 6px; vertical-align: top; }
     th { background: #f1f5f9; }
+    li { margin-bottom: 10px; }
     figure { display: inline-block; width: 220px; margin: 8px; vertical-align: top; }
     img { max-width: 220px; max-height: 180px; object-fit: cover; border: 1px solid #cbd5e1; }
     figcaption { font-size: 11px; color: #475569; }
@@ -96,19 +123,27 @@ export function buildPreliminaryReportHtml(state: InspectionState, items: Checkl
     <tbody>${circuits || '<tr><td colspan="10">Sin circuitos cargados.</td></tr>'}</tbody>
   </table>
 
-  <h2>3. No conformidades detectadas</h2>
+  <h2>3. Clasificación de hallazgos</h2>
+  <div class="finding-summary">
+    <div><strong>${findingCounts.P1}</strong><span>P1 - Peligro presente</span></div>
+    <div><strong>${findingCounts.P2}</strong><span>P2 - Potencialmente peligroso</span></div>
+    <div><strong>${findingCounts.P3}</strong><span>P3 - Mejora recomendada</span></div>
+    <div><strong>${findingCounts.MI}</strong><span>MI - Investigación adicional</span></div>
+  </div>
+
+  <h2>4. No conformidades detectadas</h2>
   <ul>${nonConformities || '<li>No se registraron no conformidades en el borrador actual.</li>'}</ul>
 
-  <h2>4. Lista de verificación</h2>
+  <h2>5. Lista de verificación</h2>
   <table>
-    <thead><tr><th>Código</th><th>RES</th><th>Grupo</th><th>Requisito</th><th>Referencia</th><th>Resultado</th><th>Observación</th></tr></thead>
+    <thead><tr><th>Código</th><th>RES</th><th>Grupo</th><th>Requisito</th><th>Referencia</th><th>Resultado</th><th>Clasificación</th><th>Acción</th><th>Plazo</th><th>Observación</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
 
-  <h2>5. Evidencias fotográficas</h2>
+  <h2>6. Evidencias fotográficas</h2>
   <div>${evidences || '<p>Sin evidencias fotográficas adjuntas.</p>'}</div>
 
-  <h2>6. Observación general</h2>
+  <h2>7. Observación general</h2>
   <p>${escapeHtml(state.meta.observacionGeneral || 'Sin observación general.')}</p>
 
   <div class="signature">

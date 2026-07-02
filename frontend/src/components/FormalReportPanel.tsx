@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { ChecklistItem, InspectionState } from '../types';
+import type { ChecklistItem, InspectionState, FindingCode } from '../types';
+import { findingCodeLabel } from '../data/findingClassifications';
 import { downloadHtmlReport, printReport } from '../utils/report';
 import { saveInspectionSyncedOffline } from '../utils/indexedDb';
 import { isNativeMobile, saveBlobForShare, shareFileUri } from '../utils/mobile';
@@ -53,6 +54,14 @@ function openBlob(blob: Blob) {
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank', 'noopener,noreferrer');
   window.setTimeout(() => URL.revokeObjectURL(url), 120000);
+}
+
+function countByFindingCode(state: InspectionState, items: ChecklistItem[]): Record<Exclude<FindingCode, ''>, number> {
+  return items.reduce<Record<Exclude<FindingCode, ''>, number>>((acc, item) => {
+    const code = state.answers[item.id]?.hallazgoCodigo;
+    if (code) acc[code] += 1;
+    return acc;
+  }, { P1: 0, P2: 0, P3: 0, MI: 0 });
 }
 
 export function FormalReportPanel({ state, applicableItems, noCumple, onInspectionChange, onRefresh }: FormalReportPanelProps) {
@@ -133,6 +142,7 @@ export function FormalReportPanel({ state, applicableItems, noCumple, onInspecti
   }
 
   const localNonConformities = applicableItems.filter((item) => state.answers[item.id]?.resultado === 'NO_CUMPLE');
+  const findingCounts = countByFindingCode(state, applicableItems);
 
   return (
     <section className="panel">
@@ -150,6 +160,14 @@ export function FormalReportPanel({ state, applicableItems, noCumple, onInspecti
         <div><strong>{state.evidences.length}</strong><span>evidencias</span></div>
         <div><strong>{state.measurements.length}</strong><span>mediciones</span></div>
         <div className={noCumple ? 'alert' : ''}><strong>{noCumple}</strong><span>no conformidades</span></div>
+      </div>
+
+      <h3>Clasificación de hallazgos</h3>
+      <div className="summary-grid finding-summary">
+        <div className={findingCounts.P1 ? 'alert' : ''}><strong>{findingCounts.P1}</strong><span>P1 peligro presente</span></div>
+        <div className={findingCounts.P2 ? 'warning' : ''}><strong>{findingCounts.P2}</strong><span>P2 potencialmente peligroso</span></div>
+        <div><strong>{findingCounts.P3}</strong><span>P3 mejora recomendada</span></div>
+        <div><strong>{findingCounts.MI}</strong><span>MI investigación adicional</span></div>
       </div>
 
       <h3>Acciones locales</h3>
@@ -189,14 +207,21 @@ export function FormalReportPanel({ state, applicableItems, noCumple, onInspecti
         <p className="muted">No se registraron no conformidades en el borrador actual.</p>
       ) : (
         <ul className="non-list">
-          {localNonConformities.map((item) => (
-            <li key={item.id}>
-              <strong>{item.codigo}</strong> {item.esRES ? <span className="badge-res">RES</span> : null} {item.requisito}<br />
-              <span>{state.answers[item.id]?.observacion || 'Sin observación.'}</span>
-            </li>
-          ))}
+          {localNonConformities.map((item) => {
+            const answer = state.answers[item.id];
+            return (
+              <li key={item.id}>
+                <strong>{item.codigo}</strong> {item.esRES ? <span className="badge-res">RES</span> : null} {item.requisito}<br />
+                <span><strong>Clasificación:</strong> {findingCodeLabel(answer?.hallazgoCodigo)} · <strong>Criticidad:</strong> {answer?.criticidad || 'Sin definir'}</span><br />
+                <span><strong>Observación:</strong> {answer?.observacion || 'Sin observación.'}</span><br />
+                <span><strong>Acción:</strong> {answer?.accionCorrectiva || 'Sin acción definida.'}</span><br />
+                <span><strong>Plazo:</strong> {answer?.plazoCorreccion || 'Sin plazo definido.'}</span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
   );
 }
+

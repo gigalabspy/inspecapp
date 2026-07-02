@@ -1,4 +1,5 @@
-import type { AnswerStatus, ChecklistAnswer, ChecklistItem } from '../types';
+import type { AnswerStatus, ChecklistAnswer, ChecklistItem, FindingCode } from '../types';
+import { findingOptions, getFindingClassification, shouldShowFindingFields } from '../data/findingClassifications';
 
 interface Props {
   item: ChecklistItem;
@@ -14,8 +15,44 @@ export function ChecklistItemCard({ item, answer, evidenceCount, onChange }: Pro
     itemId: item.id,
     resultado: '',
     observacion: '',
-    criticidad: ''
+    criticidad: '',
+    hallazgoCodigo: '',
+    accionCorrectiva: '',
+    plazoCorreccion: '',
+    responsableCorreccion: ''
   };
+
+  const selectedFinding = getFindingClassification(current.hallazgoCodigo);
+  const showFindingFields = shouldShowFindingFields(current.resultado);
+
+  function updateResultado(resultado: AnswerStatus) {
+    const nextShowsFindingFields = shouldShowFindingFields(resultado);
+
+    if (!nextShowsFindingFields) {
+      onChange({
+        ...current,
+        resultado,
+        hallazgoCodigo: '',
+        accionCorrectiva: '',
+        plazoCorreccion: '',
+        responsableCorreccion: ''
+      });
+      return;
+    }
+
+    onChange({ ...current, resultado });
+  }
+
+  function updateFindingCode(hallazgoCodigo: FindingCode) {
+    const classification = getFindingClassification(hallazgoCodigo);
+    onChange({
+      ...current,
+      hallazgoCodigo,
+      criticidad: classification?.defaultCriticidad ?? current.criticidad,
+      accionCorrectiva: classification?.action ?? current.accionCorrectiva ?? '',
+      plazoCorreccion: classification?.defaultDeadline ?? current.plazoCorreccion ?? ''
+    });
+  }
 
   return (
     <article className={`check-card ${current.resultado === 'NO_CUMPLE' ? 'noncompliance' : ''}`}>
@@ -23,6 +60,7 @@ export function ChecklistItemCard({ item, answer, evidenceCount, onChange }: Pro
         <div>
           <strong>{item.codigo}</strong>
           {item.esRES && <span className="badge danger">RES</span>}
+          {current.hallazgoCodigo && <span className={`badge finding-${current.hallazgoCodigo.toLowerCase()}`}>{current.hallazgoCodigo}</span>}
           {evidenceCount > 0 && <span className="badge">{evidenceCount} evidencia(s)</span>}
         </div>
         <small>{item.referencia}</small>
@@ -35,14 +73,14 @@ export function ChecklistItemCard({ item, answer, evidenceCount, onChange }: Pro
           Resultado
           <select
             value={current.resultado}
-            onChange={(event) => onChange({ ...current, resultado: event.target.value as AnswerStatus })}
+            onChange={(event) => updateResultado(event.target.value as AnswerStatus)}
           >
             {statuses.map((status) => <option key={status} value={status}>{status || 'Seleccionar'}</option>)}
           </select>
         </label>
 
         <label>
-          Criticidad
+          Criticidad interna
           <select
             value={current.criticidad}
             onChange={(event) => onChange({ ...current, criticidad: event.target.value as ChecklistAnswer['criticidad'] })}
@@ -55,6 +93,63 @@ export function ChecklistItemCard({ item, answer, evidenceCount, onChange }: Pro
           </select>
         </label>
       </div>
+
+      {showFindingFields && (
+        <div className="finding-box">
+          <div className="section-title small">
+            <h3>Clasificación del hallazgo</h3>
+            <span>Anexo II · Resolución INTN N° 802/2024</span>
+          </div>
+
+          <div className="form-grid compact">
+            <label>
+              Código de hallazgo
+              <select
+                value={current.hallazgoCodigo || ''}
+                onChange={(event) => updateFindingCode(event.target.value as FindingCode)}
+              >
+                <option value="">Sin clasificar</option>
+                {findingOptions.map((option) => (
+                  <option key={option.code} value={option.code}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Responsable / encargado
+              <input
+                value={current.responsableCorreccion || ''}
+                placeholder="Ej.: propietario, contratista, electricista matriculado"
+                onChange={(event) => onChange({ ...current, responsableCorreccion: event.target.value })}
+              />
+            </label>
+          </div>
+
+          {selectedFinding && (
+            <p className="finding-help">
+              <strong>{selectedFinding.label}:</strong> {selectedFinding.description}
+            </p>
+          )}
+
+          <label>
+            Acción correctiva / recomendación
+            <textarea
+              value={current.accionCorrectiva || ''}
+              placeholder="Indicar acción correctiva, mejora recomendada o investigación adicional requerida."
+              onChange={(event) => onChange({ ...current, accionCorrectiva: event.target.value })}
+            />
+          </label>
+
+          <label>
+            Plazo / condición de comunicación
+            <textarea
+              value={current.plazoCorreccion || ''}
+              placeholder="Ej.: inmediato, 24 horas posteriores a la corrección, 7 días hábiles, etc."
+              onChange={(event) => onChange({ ...current, plazoCorreccion: event.target.value })}
+            />
+          </label>
+        </div>
+      )}
 
       <label>
         Observación del inspector

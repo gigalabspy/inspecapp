@@ -12,7 +12,7 @@ import { FormalReportPanel } from './components/FormalReportPanel';
 import { ClosurePanel } from './components/ClosurePanel';
 import { MobileStatusPanel } from './components/MobileStatusPanel';
 import { checklistDSE001 } from './data/checklistDSE001';
-import type { ChecklistAnswer, ChecklistItem, InspectionState, InspectionSummary, InspectionType, StorageUsageInfo } from './types';
+import type { ChecklistAnswer, ChecklistItem, InspectionState, InspectionSummary, InspectionType, StorageUsageInfo, FindingCode } from './types';
 import { downloadJson } from './utils/storage';
 import {
   deleteInspectionOffline,
@@ -115,6 +115,14 @@ function filterItemsByInspectionType(type: InspectionType): ChecklistItem[] {
 
 function countStatus(items: ChecklistItem[], state: InspectionState, status: string): number {
   return items.filter((item) => state.answers[item.id]?.resultado === status).length;
+}
+
+function countFindingsByCode(items: ChecklistItem[], state: InspectionState): Record<Exclude<FindingCode, ''>, number> {
+  return items.reduce<Record<Exclude<FindingCode, ''>, number>>((acc, item) => {
+    const code = state.answers[item.id]?.hallazgoCodigo;
+    if (code) acc[code] += 1;
+    return acc;
+  }, { P1: 0, P2: 0, P3: 0, MI: 0 });
 }
 
 async function readJsonFile(file: File): Promise<unknown> {
@@ -266,6 +274,8 @@ function AppContent() {
   const answered = applicableItems.filter((item) => state.answers[item.id]?.resultado).length;
   const noCumple = countStatus(applicableItems, state, 'NO_CUMPLE');
   const cumple = countStatus(applicableItems, state, 'CUMPLE');
+  const findingCounts = countFindingsByCode(applicableItems, state);
+  const totalHallazgos = findingCounts.P1 + findingCounts.P2 + findingCounts.P3 + findingCounts.MI;
 
   const updateAnswer = (answer: ChecklistAnswer) => {
     setState((prev) => prev ? ({
@@ -305,6 +315,19 @@ function AppContent() {
         <div><strong>{cumple}</strong><span>cumplen</span></div>
         <div className={noCumple ? 'alert' : ''}><strong>{noCumple}</strong><span>no conformidades</span></div>
       </section>
+
+      <section className="summary-grid finding-summary">
+        <div className={findingCounts.P1 ? 'alert' : ''}><strong>{findingCounts.P1}</strong><span>P1 peligro presente</span></div>
+        <div className={findingCounts.P2 ? 'warning' : ''}><strong>{findingCounts.P2}</strong><span>P2 potencialmente peligroso</span></div>
+        <div><strong>{findingCounts.P3}</strong><span>P3 mejora recomendada</span></div>
+        <div><strong>{findingCounts.MI}</strong><span>MI investigación adicional</span></div>
+      </section>
+
+      {totalHallazgos > 0 && (
+        <section className="panel slim finding-note">
+          <strong>Clasificación de hallazgos:</strong> se registraron {totalHallazgos} hallazgo(s) clasificados conforme al Anexo II. Esta información se incorporará al informe de resultados.
+        </section>
+      )}
 
       <section className="panel slim save-strip">
         <span><strong>{state.meta.id}</strong></span>
