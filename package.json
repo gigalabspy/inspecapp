@@ -12,5 +12,10 @@
     "mobile:add:android": "cd frontend && npx cap add android",
     "mobile:open": "cd frontend && npx cap open android",
     "mobile:run": "cd frontend && npm run build && npx cap run android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/cli": "^8.4.2",
+    "@capacitor/core": "^8.4.2"
   }
 }
