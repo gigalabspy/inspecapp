@@ -16,12 +16,31 @@ await fs.mkdir(env.uploadDir, { recursive: true });
 await fs.mkdir(env.reportDir, { recursive: true });
 await readDb();
 
+function normalizeOrigin(value: string): string {
+  return value.trim().toLowerCase().replace(/\/+$/, '');
+}
+
+const allowedOrigins = env.corsOrigins.map(normalizeOrigin);
+
+function isAllowedOrigin(origin: string): boolean {
+  const normalized = normalizeOrigin(origin);
+  if (allowedOrigins.includes(normalized)) return true;
+  try {
+    const { protocol, hostname } = new URL(normalized);
+    if (protocol === 'https:' && hostname.endsWith('.onrender.com')) return true;
+  } catch {
+    // origen no parseable: se rechaza abajo
+  }
+  return false;
+}
+
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || env.corsOrigins.includes(origin)) {
+    if (!origin || isAllowedOrigin(origin)) {
       callback(null, true);
       return;
     }
+    console.warn(`CORS rechazado. Origen recibido: "${origin}". Permitidos: ${allowedOrigins.join(', ')} + https://*.onrender.com`);
     callback(new Error(`Origen no permitido por CORS: ${origin}`));
   },
   credentials: true
