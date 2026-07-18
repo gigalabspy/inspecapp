@@ -30,6 +30,16 @@ app.use(express.json({ limit: '50mb' }));
 app.use('/uploads', express.static(env.uploadDir));
 app.use('/reports', express.static(env.reportDir));
 
+app.get('/', (_req, res) => {
+  res.json({
+    ok: true,
+    app: 'InspecAPP API',
+    phase: 6,
+    message: 'API de InspecAPP funcionando. Ver estado en /api/health',
+    health: '/api/health'
+  });
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
