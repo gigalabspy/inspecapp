@@ -22,7 +22,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const STORAGE_KEY = "inspecapp.auth.user";
 
 function getApiUrl() {
-  return import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+  const base = import.meta.env.VITE_API_URL || "http://localhost:3001";
+  return base.replace(/\/+$/, "");
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -42,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   async function login(email: string, password: string) {
-    const response = await fetch(`${getApiUrl()}/auth/login`, {
+    const response = await fetch(`${getApiUrl()}/api/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -50,10 +51,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ email, password })
     });
 
-    const data = await response.json();
+    const data: any = await response.json().catch(() => ({}));
 
     if (!response.ok || !data.ok) {
-      throw new Error(data.message || "No se pudo iniciar sesión");
+      throw new Error(
+        data.message || data.error || `No se pudo iniciar sesión (HTTP ${response.status})`
+      );
     }
 
     const nextUser: AuthUser = {
