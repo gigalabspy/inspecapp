@@ -234,6 +234,19 @@ export async function listAuditEntries(inspectionId: string): Promise<AuditEntry
   return mergeAuditEntries(record?.payload.auditTrail || [], db.audit.filter((entry) => entry.inspectionId === inspectionId));
 }
 
+export async function restoreInspection(id: string): Promise<boolean> {
+  const db = await readDb();
+  const index = db.inspections.findIndex((record) => record.id === id);
+  if (index < 0) return false;
+  db.inspections[index] = {
+    ...db.inspections[index],
+    deleted: false,
+    serverUpdatedAt: new Date().toISOString()
+  };
+  await writeDb(db);
+  return true;
+}
+
 export async function markInspectionDeleted(id: string): Promise<boolean> {
   const db = await readDb();
   const index = db.inspections.findIndex((record) => record.id === id);

@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { markInspectionDeleted, readDb, summarizeInspection, upsertInspection } from '../storage/jsonDb.js';
-import { authRequired } from '../middleware/auth.js';
+import { markInspectionDeleted, readDb, restoreInspection, summarizeInspection, upsertInspection } from '../storage/jsonDb.js';
+import { authRequired, requireRoles } from '../middleware/auth.js';
 import type { InspectionState } from '../types/inspection.js';
 
 export const inspectionsRouter = Router();
@@ -10,6 +10,20 @@ inspectionsRouter.use(authRequired);
 inspectionsRouter.get('/', async (_req, res) => {
   const db = await readDb();
   res.json({ inspections: db.inspections.filter((record) => !record.deleted).map(summarizeInspection) });
+});
+
+inspectionsRouter.get('/trash/list', requireRoles('ADMIN'), async (_req, res) => {
+  const db = await readDb();
+  res.json({ inspections: db.inspections.filter((record) => record.deleted).map(summarizeInspection) });
+});
+
+inspectionsRouter.post('/:id/restore', requireRoles('ADMIN'), async (req, res) => {
+  const restored = await restoreInspection(req.params.id);
+  if (!restored) {
+    res.status(404).json({ error: 'Inspección no encontrada.' });
+    return;
+  }
+  res.json({ restored: true });
 });
 
 inspectionsRouter.get('/:id', async (req, res) => {
@@ -32,7 +46,7 @@ inspectionsRouter.put('/:id', async (req, res) => {
   res.json({ accepted: true, inspection: record.payload, serverUpdatedAt: record.serverUpdatedAt });
 });
 
-inspectionsRouter.delete('/:id', async (req, res) => {
+inspectionsRouter.delete('/:id', requireRoles('ADMIN'), async (req, res) => {
   const deleted = await markInspectionDeleted(req.params.id);
   res.status(deleted ? 200 : 404).json({ deleted });
 });
