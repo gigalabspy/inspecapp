@@ -124,6 +124,33 @@ export function SyncPanel({ currentInspection, onCurrentInspectionChange, onRefr
     }
   }
 
+  async function handleForcePush() {
+    if (!session.token) {
+      setMessage('Primero iniciá sesión.');
+      return;
+    }
+    if (!offlineInspections.length) {
+      setMessage('No hay inspecciones locales para subir.');
+      return;
+    }
+    setBusy(true);
+    setMessage(`Forzando subida de ${offlineInspections.length} inspección(es) local(es)...`);
+    try {
+      const result = await pushInspections(session.apiUrl, session.token, offlineInspections);
+      for (const accepted of result.accepted) {
+        const saved = await saveInspectionSyncedOffline(accepted.inspection);
+        if (currentInspection?.meta.id === saved.meta.id) onCurrentInspectionChange?.(saved);
+      }
+      await refreshLocalList();
+      await onRefresh?.();
+      setMessage(`Subida forzada finalizada. Aceptadas: ${result.accepted.length}. Conflictos: ${result.conflicts.length}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'No se pudo forzar la subida.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handlePull() {
     if (!session.token) {
       setMessage('Primero iniciá sesión.');
@@ -194,6 +221,7 @@ export function SyncPanel({ currentInspection, onCurrentInspectionChange, onRefr
         <button type="button" className="ghost" disabled={busy} onClick={handleHealthCheck}>Probar servidor</button>
         <button type="button" disabled={busy} onClick={handleLogin}>Iniciar sesión</button>
         <button type="button" disabled={busy || !pending.length} onClick={handlePush}>Subir pendientes</button>
+        <button type="button" className="ghost" disabled={busy || !offlineInspections.length} onClick={handleForcePush}>Forzar subida total</button>
         <button type="button" className="ghost" disabled={busy} onClick={handlePull}>Descargar cambios</button>
         <button type="button" disabled={busy} onClick={handleFullSync}>Sincronización completa</button>
       </div>
