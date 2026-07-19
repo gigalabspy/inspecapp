@@ -42,6 +42,7 @@ function ensureSpace(doc: PDFKit.PDFDocument, height = 80): void {
 
 function sectionTitle(doc: PDFKit.PDFDocument, title: string): void {
   ensureSpace(doc, 55);
+  doc.x = doc.page.margins.left;
   doc.moveDown(0.8);
   doc.fontSize(13).fillColor('#0f172a').font('Helvetica-Bold').text(title);
   doc.moveTo(doc.page.margins.left, doc.y + 4).lineTo(doc.page.width - doc.page.margins.right, doc.y + 4).strokeColor('#94a3b8').stroke();
@@ -50,6 +51,7 @@ function sectionTitle(doc: PDFKit.PDFDocument, title: string): void {
 
 function keyValue(doc: PDFKit.PDFDocument, key: string, value: unknown): void {
   ensureSpace(doc, 22);
+  doc.x = doc.page.margins.left;
   const startY = doc.y;
   doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#334155').text(`${key}:`, { continued: true });
   doc.font('Helvetica').fillColor('#111827').text(` ${text(value)}`);
@@ -139,7 +141,7 @@ export async function buildFormalReportPdf(inspection: InspectionState): Promise
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       size: 'A4',
-      margins: { top: 46, bottom: 54, left: 42, right: 42 },
+      margins: { top: 96, bottom: 54, left: 42, right: 42 },
       bufferPages: true,
       info: {
         Title: `Informe de inspección ${inspection.meta.id}`,
@@ -154,27 +156,42 @@ export async function buildFormalReportPdf(inspection: InspectionState): Promise
     doc.on('error', reject);
     doc.on('end', () => resolve(Buffer.concat(chunks)));
 
-    doc.rect(0, 0, doc.page.width, 24).fill('#0f766e');
     const logoBuffer = getLogoBuffer();
-    const headerX = logoBuffer ? 150 : 42;
-    if (logoBuffer) {
-      try {
-        doc.image(logoBuffer, 42, 40, { fit: [96, 64] });
-      } catch {
-        // logo inválido: continuar sin imagen
+
+    function drawPageHeader(firstPage: boolean): void {
+      doc.rect(0, 0, doc.page.width, 24).fill('#0f766e');
+      const headerX = logoBuffer ? 150 : 42;
+      if (logoBuffer) {
+        try {
+          doc.image(logoBuffer, 42, firstPage ? 38 : 32, { fit: firstPage ? [96, 60] : [78, 42] });
+        } catch {
+          // logo inválido: continuar sin imagen
+        }
       }
+      const titleWidth = 372 - headerX;
+      if (firstPage) {
+        doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(20).text(COMPANY.name, headerX, 40, { lineBreak: false });
+        doc.fontSize(11.5).text('Informe preliminar de inspección eléctrica en baja tensión', headerX, 64, { width: titleWidth });
+        doc.font('Helvetica').fontSize(9).fillColor('#475569').text('DSE-GUI-001 · NP 2 028 96 · Generado desde servidor', headerX, 96, { lineBreak: false });
+        doc.fontSize(8.5).text(`${COMPANY.address} · Tel: ${COMPANY.phone}`, headerX, 109, { lineBreak: false });
+        doc.text(`${COMPANY.email} · ${COMPANY.website}`, headerX, 121, { lineBreak: false });
+      } else {
+        doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(13).text(COMPANY.name, headerX, 34, { lineBreak: false });
+        doc.font('Helvetica').fontSize(7.8).fillColor('#475569').text('Informe preliminar de inspección eléctrica en baja tensión · DSE-GUI-001 · NP 2 028 96', headerX, 52, { width: titleWidth + 60, lineBreak: false });
+        doc.fontSize(7.5).text(`${COMPANY.address} · Tel: ${COMPANY.phone} · ${COMPANY.email} · ${COMPANY.website}`, headerX, 64, { width: titleWidth + 60, lineBreak: false });
+      }
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#0f172a').text(`REP-${inspection.meta.id}`, 380, firstPage ? 44 : 36, { width: 170, align: 'right' });
+      doc.font('Helvetica').fontSize(8.5).fillColor('#334155').text(`Generado: ${formatDate(generatedAt)}`, 380, firstPage ? 62 : 52, { width: 170, align: 'right' });
+      if (firstPage) {
+        doc.text(`Resultado: ${summary.resultadoPreliminar}`, 380, 76, { width: 170, align: 'right' });
+      }
+      doc.font('Helvetica').fillColor('#111827');
+      doc.x = doc.page.margins.left;
+      doc.y = firstPage ? 142 : doc.page.margins.top;
     }
-    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(22).text(COMPANY.name, headerX, 44);
-    doc.fontSize(13).text('Informe preliminar de inspección eléctrica en baja tensión', headerX, 70);
-    doc.font('Helvetica').fontSize(9.5).fillColor('#475569').text('DSE-GUI-001 · NP 2 028 96 · Generado desde servidor', headerX, 88);
-    doc.fontSize(8.5).fillColor('#475569').text(`${COMPANY.address} · Tel: ${COMPANY.phone}`, headerX, 101);
-    doc.text(`${COMPANY.email} · ${COMPANY.website}`, headerX, 113);
-    doc.font('Helvetica-Bold').fontSize(10).fillColor('#0f172a').text(`REP-${inspection.meta.id}`, 380, 50, { width: 170, align: 'right' });
-    doc.font('Helvetica').fontSize(8.5).fillColor('#334155').text(`Generado: ${formatDate(generatedAt)}`, 380, 68, { width: 170, align: 'right' });
-    doc.text(`Resultado: ${summary.resultadoPreliminar}`, 380, 82, { width: 170, align: 'right' });
-    doc.x = doc.page.margins.left;
-    doc.y = Math.max(doc.y, 132);
-    doc.moveDown(1);
+
+    drawPageHeader(true);
+    doc.on('pageAdded', () => drawPageHeader(false));
 
     sectionTitle(doc, '1. Identificación de la inspección');
     keyValue(doc, 'Fecha de inspección', inspection.meta.fechaInspeccion);
