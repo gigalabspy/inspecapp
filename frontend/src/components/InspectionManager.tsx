@@ -46,9 +46,9 @@ export function InspectionManager({
     <main>
       <header className="hero dashboard-hero">
         <div>
-          <p className="eyebrow">InspecAPP · Fase 4</p>
-          <h1>Backend y sincronización</h1>
-          <p>Gestión offline en el dispositivo, respaldo en servidor, API central y sincronización entre campo y oficina.</p>
+          <p className="eyebrow">InspecAPP · Fase 6</p>
+          <h1>Panel de inspecciones</h1>
+          <p>App Android con Capacitor: trabajo offline en el dispositivo, respaldo en servidor, sincronización entre campo y oficina y cierre formal.</p>
         </div>
         <div className="hero-actions">
           <button type="button" onClick={onNew}>Nueva inspección</button>
