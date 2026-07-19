@@ -22,7 +22,7 @@ function demoUsers(): UserRecord[] {
     {
       id: 'usr-supervisor-demo',
       email: 'supervisor@inspecapp.local',
-      name: 'Supervisor Técnico',
+      name: 'Gerente Técnico',
       role: 'SUPERVISOR',
       token: tokenFor('supervisor', 'supervisor@inspecapp.local'),
       active: true,
@@ -58,7 +58,7 @@ async function ensureDbFile(): Promise<void> {
 
 function mergeDemoUsers(users: UserRecord[] = []): UserRecord[] {
   const byEmail = new Map<string, UserRecord>();
-  [...users, ...demoUsers()].forEach((user) => byEmail.set(user.email.toLowerCase(), user));
+  [...demoUsers(), ...users].forEach((user) => byEmail.set(user.email.toLowerCase(), user));
   return Array.from(byEmail.values());
 }
 

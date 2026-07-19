@@ -11,6 +11,7 @@ import { LoginGate } from './auth/LoginGate';
 import { FormalReportPanel } from './components/FormalReportPanel';
 import { ClosurePanel } from './components/ClosurePanel';
 import { MobileStatusPanel } from './components/MobileStatusPanel';
+import { UserAdminPanel } from './components/UserAdminPanel';
 import { checklistDSE001 } from './data/checklistDSE001';
 import type { ChecklistAnswer, ChecklistItem, InspectionState, InspectionSummary, InspectionType, StorageUsageInfo, FindingCode } from './types';
 import { downloadJson } from './utils/storage';
@@ -38,7 +39,8 @@ type TabKey =
   | 'sync'
   | 'reporte'
   | 'cierre'
-  | 'movil';
+  | 'movil'
+  | 'usuarios';
 
 type AppTab = {
   key: TabKey;
@@ -54,7 +56,8 @@ const appTabs: AppTab[] = [
   { key: 'sync', label: '5. Sync', roles: ['ADMIN'] },
   { key: 'reporte', label: '6. Reporte', roles: ['INSPECTOR', 'SUPERVISOR', 'ADMIN'] },
   { key: 'cierre', label: '7. Cierre', roles: ['SUPERVISOR', 'ADMIN'] },
-  { key: 'movil', label: '8. Móvil', roles: ['ADMIN'] }
+  { key: 'movil', label: '8. Móvil', roles: ['ADMIN'] },
+  { key: 'usuarios', label: '9. Usuarios', roles: ['ADMIN'] }
 ];
 
 function canUseTab(role: UserRole | undefined, tab: TabKey): boolean {
@@ -450,6 +453,7 @@ function AppContent() {
           })()}
         />
       )}
+      {tab === 'usuarios' && canUseTab(userRole, 'usuarios') && <UserAdminPanel />}
     </main>
   );
 }

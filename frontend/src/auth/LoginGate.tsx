@@ -7,7 +7,7 @@ const demoUsers = [
     email: "inspector@inspecapp.local"
   },
   {
-    label: "Supervisor",
+    label: "Gerente",
     email: "supervisor@inspecapp.local"
   },
   {

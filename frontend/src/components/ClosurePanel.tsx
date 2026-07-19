@@ -171,7 +171,7 @@ export function ClosurePanel({ state, onInspectionChange, onRefresh }: ClosurePa
           <select value={kind} onChange={(e) => handleKindChange(e.target.value as SignatureKind)}>
             <option value="INSPECTOR">Inspector actuante</option>
             <option value="PROPIETARIO">Propietario / responsable</option>
-            <option value="SUPERVISOR">Supervisor técnico</option>
+            <option value="SUPERVISOR">Gerente técnico</option>
           </select>
         </label>
         <label>Nombre del firmante<input value={signerName} onChange={(e) => setSignerName(e.target.value)} /></label>

@@ -8,6 +8,7 @@ import { syncRouter } from './routes/sync.js';
 import { evidencesRouter } from './routes/evidences.js';
 import { reportsRouter } from './routes/reports.js';
 import { workflowRouter } from './routes/workflow.js';
+import { usersRouter } from './routes/users.js';
 import { readDb } from './storage/jsonDb.js';
 
 const app = express();
@@ -69,6 +70,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/users', usersRouter);
 app.use('/api/inspections', inspectionsRouter);
 app.use('/api/sync', syncRouter);
 app.use('/api/evidences', evidencesRouter);

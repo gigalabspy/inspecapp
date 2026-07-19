@@ -240,7 +240,7 @@ export function buildFormalReportHtml(inspection: InspectionState): string {
   <div class="signature-grid">
     ${signatureHtml('PROPIETARIO', 'Propietario / responsable')}
     ${signatureHtml('INSPECTOR', 'Inspector actuante')}
-    ${signatureHtml('SUPERVISOR', 'Supervisor técnico')}
+    ${signatureHtml('SUPERVISOR', 'Gerente técnico')}
   </div>
 
   <h2>9. Trazabilidad resumida</h2>

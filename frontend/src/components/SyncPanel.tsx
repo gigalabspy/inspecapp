@@ -203,7 +203,7 @@ export function SyncPanel({ currentInspection, onCurrentInspectionChange, onRefr
       <details className="sync-details">
         <summary>Credenciales demo incluidas</summary>
         <p><strong>Inspector:</strong> inspector@inspecapp.local / inspecapp123</p>
-        <p><strong>Supervisor:</strong> supervisor@inspecapp.local / inspecapp123</p>
+        <p><strong>Gerente:</strong> supervisor@inspecapp.local / inspecapp123</p>
         <p><strong>Administrador:</strong> admin@inspecapp.local / inspecapp123</p>
       </details>
     </section>

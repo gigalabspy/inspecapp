@@ -254,7 +254,7 @@ export async function buildFormalReportPdf(inspection: InspectionState): Promise
     const signatureKinds: Array<{ kind: string; label: string; x: number }> = [
       { kind: 'PROPIETARIO', label: 'Propietario / responsable', x: 42 },
       { kind: 'INSPECTOR', label: 'Inspector actuante', x: 205 },
-      { kind: 'SUPERVISOR', label: 'Supervisor técnico', x: 368 }
+      { kind: 'SUPERVISOR', label: 'Gerente técnico', x: 368 }
     ];
     const signatureY = doc.y + 10;
     signatureKinds.forEach((slot) => {
