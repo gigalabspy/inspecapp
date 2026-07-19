@@ -1,0 +1,9 @@
+Coloca aqui el logo de la empresa para el membrete de los informes.
+
+Nombre esperado del archivo (cualquiera de estos):
+  logo-gigalabs.png   (recomendado, fondo transparente)
+  logo-gigalabs.jpg
+  logo-gigalabs.jpeg
+
+Tamano sugerido: al menos 300 px de ancho. Se muestra a ~64 px de alto.
+Si no hay logo, el informe se genera igual con los datos de contacto.

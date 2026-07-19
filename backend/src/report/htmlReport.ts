@@ -1,5 +1,6 @@
 import type { ChecklistItem, Evidence, InspectionState } from '../types/inspection.js';
 import { buildReportSummary, getApplicableItems, itemById } from './reportData.js';
+import { COMPANY, getLogoDataUrl } from './branding.js';
 
 function escapeHtml(value: unknown): string {
   return String(value ?? '')
@@ -41,6 +42,7 @@ function evidenceHtml(evidence: Evidence, items: ChecklistItem[]): string {
 export function buildFormalReportHtml(inspection: InspectionState): string {
   const items = getApplicableItems(inspection.meta.tipoInspeccion);
   const summary = buildReportSummary(inspection);
+  const logoDataUrl = getLogoDataUrl();
 
   const checklistRows = items.map((item) => {
     const answer = inspection.answers?.[item.id];
@@ -126,6 +128,9 @@ export function buildFormalReportHtml(inspection: InspectionState): string {
     .brand h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
     .brand p { margin: 3px 0; color: #475569; }
     .doc-code { text-align:right; font-size: 12px; color: #334155; }
+    .letterhead { display:flex; gap:16px; align-items:center; }
+    .letterhead .logo { height: 64px; width: auto; max-width: 180px; object-fit: contain; }
+    .letterhead .contact { font-size: 11px; color: #475569; }
     h2 { margin: 24px 0 8px; font-size: 17px; color: #0f172a; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
     h3 { margin: 18px 0 8px; font-size: 14px; }
     .grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 18px; margin: 10px 0 18px; font-size: 12px; }
@@ -159,10 +164,15 @@ export function buildFormalReportHtml(inspection: InspectionState): string {
 <body>
   <section class="cover">
     <div class="brand">
-      <div>
-        <h1>InspecAPP</h1>
-        <p>Informe preliminar de inspección de instalación eléctrica en baja tensión</p>
-        <p>DSE-GUI-001 · NP 2 028 96</p>
+      <div class="letterhead">
+        ${logoDataUrl ? `<img class="logo" src="${logoDataUrl}" alt="${escapeHtml(COMPANY.name)}" />` : ''}
+        <div>
+          <h1>${escapeHtml(COMPANY.name)}</h1>
+          <p>Informe preliminar de inspección de instalación eléctrica en baja tensión</p>
+          <p>DSE-GUI-001 · NP 2 028 96</p>
+          <p class="contact">${escapeHtml(COMPANY.address)} · Tel: ${escapeHtml(COMPANY.phone)}</p>
+          <p class="contact">${escapeHtml(COMPANY.email)} · ${escapeHtml(COMPANY.website)}</p>
+        </div>
       </div>
       <div class="doc-code">
         <strong>Código:</strong> REP-${escapeHtml(inspection.meta.id)}<br />

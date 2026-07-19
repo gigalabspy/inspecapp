@@ -2,6 +2,7 @@ import PDFDocument from 'pdfkit';
 import type { ChecklistItem, Evidence, InspectionState } from '../types/inspection.js';
 import { buildReportSummary, getApplicableItems, itemById } from './reportData.js';
 import { findingCodeLabel } from './findingClassifications.js';
+import { COMPANY, getLogoBuffer } from './branding.js';
 
 function text(value: unknown): string {
   return String(value ?? '').trim() || 's/d';
@@ -142,7 +143,7 @@ export async function buildFormalReportPdf(inspection: InspectionState): Promise
       bufferPages: true,
       info: {
         Title: `Informe de inspección ${inspection.meta.id}`,
-        Author: 'InspecAPP',
+        Author: COMPANY.name,
         Subject: 'Inspección de instalaciones eléctricas en baja tensión',
         Keywords: 'DSE-GUI-001, NP 2 028 96, baja tensión, inspección'
       }
@@ -154,13 +155,26 @@ export async function buildFormalReportPdf(inspection: InspectionState): Promise
     doc.on('end', () => resolve(Buffer.concat(chunks)));
 
     doc.rect(0, 0, doc.page.width, 24).fill('#0f766e');
-    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(22).text('InspecAPP', 42, 48);
-    doc.fontSize(14).text('Informe preliminar de inspección eléctrica en baja tensión', 42, 76);
-    doc.font('Helvetica').fontSize(9.5).fillColor('#475569').text('DSE-GUI-001 · NP 2 028 96 · Generado desde servidor', 42, 98);
+    const logoBuffer = getLogoBuffer();
+    const headerX = logoBuffer ? 150 : 42;
+    if (logoBuffer) {
+      try {
+        doc.image(logoBuffer, 42, 40, { fit: [96, 64] });
+      } catch {
+        // logo inválido: continuar sin imagen
+      }
+    }
+    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(22).text(COMPANY.name, headerX, 44);
+    doc.fontSize(13).text('Informe preliminar de inspección eléctrica en baja tensión', headerX, 70);
+    doc.font('Helvetica').fontSize(9.5).fillColor('#475569').text('DSE-GUI-001 · NP 2 028 96 · Generado desde servidor', headerX, 88);
+    doc.fontSize(8.5).fillColor('#475569').text(`${COMPANY.address} · Tel: ${COMPANY.phone}`, headerX, 101);
+    doc.text(`${COMPANY.email} · ${COMPANY.website}`, headerX, 113);
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#0f172a').text(`REP-${inspection.meta.id}`, 380, 50, { width: 170, align: 'right' });
     doc.font('Helvetica').fontSize(8.5).fillColor('#334155').text(`Generado: ${formatDate(generatedAt)}`, 380, 68, { width: 170, align: 'right' });
     doc.text(`Resultado: ${summary.resultadoPreliminar}`, 380, 82, { width: 170, align: 'right' });
-    doc.moveDown(2.5);
+    doc.x = doc.page.margins.left;
+    doc.y = Math.max(doc.y, 132);
+    doc.moveDown(1);
 
     sectionTitle(doc, '1. Identificación de la inspección');
     keyValue(doc, 'Fecha de inspección', inspection.meta.fechaInspeccion);
